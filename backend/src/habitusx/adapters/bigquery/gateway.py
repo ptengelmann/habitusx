@@ -113,7 +113,8 @@ def make_client(project: str, location: str) -> BigQueryClientLike:
     """Construct the real client using Application Default Credentials."""
     from google.cloud import bigquery  # noqa: PLC0415 - vendor import kept local to the adapter
 
-    return bigquery.Client(project=project, location=location)
+    client: BigQueryClientLike = bigquery.Client(project=project, location=location)
+    return client
 
 
 class BigQueryGateway:
