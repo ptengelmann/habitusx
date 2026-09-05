@@ -54,6 +54,8 @@ and never blends them silently:
   Reverts that happened after 6 October 2025 are not visible in this source.
 - **Source B, panel, 7 October 2025 onward.** A deterministic sample of public
   repositories followed through the GitHub API, with confidence intervals on every rate.
+  Cohorts, sampling and sizing are in ADR 0007. Repository attrition (deleted, private,
+  renamed) is measured and published, not hidden.
 
 The full reasoning is in ADR 0006.
 

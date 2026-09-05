@@ -62,6 +62,23 @@ class Settings(BaseSettings):
         default="US",
         description="BigQuery location. GitHub Archive lives in the US multi-region.",
     )
+    # GitHub API, for the repository panel (Source B). Token from env, else the gh CLI.
+    github_token: str | None = Field(
+        default=None,
+        description="Fine-grained token with public repo read access; falls back to gh auth token.",
+    )
+    github_reserve_points: int = Field(
+        default=200,
+        ge=0,
+        description="GraphQL points never spent; below this we wait for the reset.",
+    )
+    panel_batch_size: int = Field(
+        default=5,
+        ge=1,
+        le=20,
+        description="Repositories per GraphQL request; 5 stays under GitHub's time limit.",
+    )
+
     bq_max_bytes_billed: int = Field(
         default=25 * GIB,
         ge=1,

@@ -32,7 +32,7 @@ ADRs in `docs/adr/`.
 │                                                                                 │
 │  api/          FastAPI: read-only endpoints, badge SVGs            (PR 4)       │
 │  services/     pipelines: ingest -> attribute -> outcomes -> aggregate (PR 2-3) │
-│  adapters/     bigquery (GitHub Archive), postgres (serving), github (PR 2-3)   │
+│  adapters/     bigquery (census), github (panel), parquet; postgres (PR 4)     │
 │  domain/       trailers, commits, reverts, attribution engine      (PR 1, done) │
 │  registry/     loads registry/agents.yaml into domain models       (PR 1, done) │
 │  config/errors/logging                                              (PR 1, done) │
@@ -64,7 +64,7 @@ ADRs in `docs/adr/`.
    within-repo rather than across the whole of GitHub.
 5. **Serve.** The API reads aggregates only. Badges are rendered from the same tables.
 
-## What exists now (PR 1 and PR 2)
+## What exists now (PR 1 to PR 3)
 
 - Domain: git trailer parser following `git interpret-trailers` semantics, commit model
   with validated SHA and repo name, revert/reapply parser, data-driven attribution engine
@@ -75,6 +75,9 @@ ADRs in `docs/adr/`.
 - Ingest (PR 2): registry-driven SQL prefilter, BigQuery gateway with dry-run budget guard,
   one-day extraction to Parquet with a reproducibility manifest, CLI `ingest estimate|day`.
   Historical only, to 2025-10-06; see ADR 0006 for why and what replaces it.
+- Panel (PR 3): deterministic cohorts (ADR 0007), GitHub GraphQL adapter with retries and a
+  point budget, daily fetch of commits and pull requests per repository, attribution through
+  the same engine, Parquet + manifest under `panel/fetched_on=...`, CLI `panel build|fetch`.
 
 ## Known limitations
 

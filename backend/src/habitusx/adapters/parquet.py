@@ -86,16 +86,25 @@ def to_record(obs: CommitObservation) -> dict[str, Any]:
     }
 
 
-def write_observations(observations: Iterable[CommitObservation], path: Path) -> int:
-    """Write observations to ``path`` as a single Parquet file. Returns the row count."""
-    records = [to_record(o) for o in observations]
-    table = pa.Table.from_pylist(records, schema=SCHEMA)
+def write_records(records: Iterable[dict[str, Any]], schema: pa.Schema, path: Path) -> int:
+    """Write flat records to ``path`` as one zstd Parquet file with ``schema``. Returns rows."""
+    table = pa.Table.from_pylist(list(records), schema=schema)
     path.parent.mkdir(parents=True, exist_ok=True)
     pq.write_table(table, path, compression="zstd")
     return int(table.num_rows)
 
 
-def read_records(path: Path) -> list[dict[str, Any]]:
-    """Read a Parquet file written by :func:`write_observations` back into plain dicts."""
-    records: list[dict[str, Any]] = pq.read_table(path, schema=SCHEMA).to_pylist()
+def read_table(path: Path, schema: pa.Schema | None = None) -> list[dict[str, Any]]:
+    """Read a Parquet file back into plain dicts, optionally validating against ``schema``."""
+    records: list[dict[str, Any]] = pq.read_table(path, schema=schema).to_pylist()
     return records
+
+
+def write_observations(observations: Iterable[CommitObservation], path: Path) -> int:
+    """Write census observations to ``path``. Returns the row count."""
+    return write_records((to_record(o) for o in observations), SCHEMA, path)
+
+
+def read_records(path: Path) -> list[dict[str, Any]]:
+    """Read a file written by :func:`write_observations` back into plain dicts."""
+    return read_table(path, SCHEMA)

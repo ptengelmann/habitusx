@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+from datetime import UTC, date, datetime
 from pathlib import Path
 
 import pytest
@@ -8,9 +9,21 @@ from typer.testing import CliRunner
 
 from habitusx import __version__, cli
 from habitusx.adapters.bigquery.gateway import BigQueryGateway
+from habitusx.adapters.github.client import GitHubGraphQL
+from habitusx.adapters.parquet import write_observations
 from habitusx.cli import app
 from habitusx.config import get_settings
-from tests.fakes import FakeClient, fake_job_config, sample_rows
+from habitusx.domain.observations import CommitObservation
+from tests.fakes import (
+    SHA_A,
+    FakeClient,
+    FakeTransport,
+    fake_job_config,
+    gql_commit,
+    gql_repo,
+    gql_response,
+    sample_rows,
+)
 
 runner = CliRunner()
 
@@ -105,3 +118,96 @@ class TestIngestCommands:
         assert "3 rows" in day.stdout
         assert "claude-code" in day.stdout
         assert (tmp_path / "observations" / "day=2025-09-01" / "commits.parquet").exists()
+
+
+class TestPanelCommands:
+    def test_build_and_fetch_with_fakes(
+        self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+    ) -> None:
+        # A one-row census so the treated cohort has a candidate.
+        obs = CommitObservation(
+            day=date(2025, 9, 1),
+            registry_version=1,
+            event_id="1",
+            repo="a/ai",
+            sha=SHA_A,
+            pushed_at=datetime(2025, 9, 1, tzinfo=UTC),
+            is_distinct=True,
+            push_size=1,
+            subject="s",
+            message="m",
+            is_revert=False,
+            revert=None,
+            author_email_hash=None,
+            author_name_hash=None,
+            pusher_login_hash=None,
+            pusher_is_bot=False,
+            attribution=None,
+            agent_id="claude-code",
+            matched_prefilter=True,
+            commits_in_repo_day=1,
+        )
+        write_observations([obs], tmp_path / "observations" / "day=2025-09-01" / "commits.parquet")
+
+        bq = BigQueryGateway(
+            FakeClient(estimate_bytes=1, rows=[{"repo": "c/control"}, {"repo": "a/ai"}]),
+            max_bytes_billed=10**9,
+            job_config_factory=fake_job_config,
+        )
+        monkeypatch.setattr(cli, "_gateway", lambda settings, max_bytes: bq)
+
+        build = runner.invoke(
+            app,
+            [
+                "panel",
+                "build",
+                "--control-day",
+                "2026-08-25",
+                "--treated-rate",
+                "1.0",
+                "--control-rate",
+                "1.0",
+                "--observations",
+                str(tmp_path),
+                "--out",
+                str(tmp_path / "p.json"),
+            ],
+        )
+        assert build.exit_code == 0, build.output
+        assert "2 repos" in build.stdout
+        assert "treated 1 of 1" in build.stdout
+        assert "control 1 of 2" in build.stdout  # a/ai excluded from control because treated
+
+        transport = FakeTransport(
+            [
+                gql_response(
+                    {"r0": gql_repo("a/ai", commits=[gql_commit()]), "r1": gql_repo("c/control")}
+                )
+            ]
+        )
+        monkeypatch.setattr(cli, "_github_client", lambda settings: GitHubGraphQL(transport))
+        fetch = runner.invoke(
+            app,
+            [
+                "panel",
+                "fetch",
+                "--since",
+                "2026-09-01",
+                "--panel",
+                str(tmp_path / "p.json"),
+                "--out",
+                str(tmp_path),
+            ],
+        )
+        assert fetch.exit_code == 0, fetch.output
+        assert "2 repos since 2026-09-01" in fetch.stdout
+        assert "ok 2" in fetch.stdout
+        assert "commits 1" in fetch.stdout
+        assert any((tmp_path / "panel").glob("fetched_on=*/commits.parquet"))
+
+    def test_fetch_missing_panel_exits_1(self, tmp_path: Path) -> None:
+        result = runner.invoke(
+            app, ["panel", "fetch", "--since", "2026-09-01", "--panel", str(tmp_path / "nope.json")]
+        )
+        assert result.exit_code == 1
+        assert "cannot read panel" in result.output
