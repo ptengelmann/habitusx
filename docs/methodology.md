@@ -44,6 +44,19 @@ but never sufficient alone.
   their trailers are replaced by one commit whose message GitHub composes from the PR.
   Trailers usually survive in the body; the pipeline reads them there.
 
+## Two sources, stated on every number
+
+GitHub changed its public Events API on 7 October 2025 and removed commit and pull request
+content from the events that GitHub Archive mirrors. HabitusX therefore has two sources
+and never blends them silently:
+
+- **Source A, census, 2011 to 6 October 2025.** Every public push, full commit messages.
+  Reverts that happened after 6 October 2025 are not visible in this source.
+- **Source B, panel, 7 October 2025 onward.** A deterministic sample of public
+  repositories followed through the GitHub API, with confidence intervals on every rate.
+
+The full reasoning is in ADR 0006.
+
 ## Reproducibility
 
 Every published number is tied to a registry version, a methodology version and a date

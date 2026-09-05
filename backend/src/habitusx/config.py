@@ -19,6 +19,9 @@ from habitusx.errors import ConfigurationError
 # backend/src/habitusx/config.py -> repository root is four levels up.
 _REPO_ROOT = Path(__file__).resolve().parents[3]
 DEFAULT_REGISTRY_PATH = _REPO_ROOT / "registry" / "agents.yaml"
+DEFAULT_DATA_DIR = _REPO_ROOT / "backend" / "data"
+
+GIB = 1024**3
 
 Environment = Literal["dev", "test", "prod"]
 LogFormat = Literal["console", "json"]
@@ -44,6 +47,28 @@ class Settings(BaseSettings):
     registry_path: Path = Field(
         default=DEFAULT_REGISTRY_PATH,
         description="Path to the attribution registry YAML.",
+    )
+    data_dir: Path = Field(
+        default=DEFAULT_DATA_DIR,
+        description="Where ingest output (Parquet + manifests) is written. Git-ignored.",
+    )
+
+    # BigQuery. Credentials come from Application Default Credentials, never from settings.
+    gcp_project: str | None = Field(
+        default=None,
+        description="Google Cloud project that is billed for queries, e.g. habitusx-507702.",
+    )
+    bq_location: str = Field(
+        default="US",
+        description="BigQuery location. GitHub Archive lives in the US multi-region.",
+    )
+    bq_max_bytes_billed: int = Field(
+        default=25 * GIB,
+        ge=1,
+        description=(
+            "Hard ceiling per query. Dry-run estimates above this raise before spending; "
+            "BigQuery also enforces it server-side. One day of commit messages is ~16 GiB."
+        ),
     )
 
     @field_validator("log_level")
