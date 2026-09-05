@@ -1,0 +1,186 @@
+# HabitusX attribution registry
+#
+# Detection rules for AI coding agents. Each agent lists the signals its tooling leaves
+# in commits and pull requests. The engine evaluates every signal; the strongest match
+# wins and all matches are kept as evidence.
+#
+# Contributing: see registry/README.md. Every signal needs an `evidence` link to a real
+# public commit or vendor documentation before its agent can be marked `verified`.
+# Schema: registry/schema.json (generated; run `habitusx registry schema`).
+
+version: 1
+
+agents:
+  - id: claude-code
+    name: Claude Code
+    vendor: Anthropic
+    homepage: https://claude.com/claude-code
+    status: verified
+    signals:
+      - id: claude-code-coauthor-email
+        type: trailer_email
+        trailer_key: Co-Authored-By
+        pattern: '^noreply@anthropic\.com$'
+        confidence: high
+        evidence: Default trailer written by Claude Code on every commit it creates.
+      - id: claude-code-coauthor-name
+        type: trailer_name
+        trailer_key: Co-Authored-By
+        pattern: '^Claude(\s|$)'
+        confidence: medium
+        notes: Name part varies by model, e.g. "Claude", "Claude Opus 4", "Claude Fable 5.1".
+      - id: claude-code-session-trailer
+        type: trailer_present
+        trailer_key: Claude-Session
+        pattern: 'claude\.ai/code/session_'
+        confidence: high
+        notes: Session link trailer added by newer Claude Code versions.
+      - id: claude-github-app-login
+        type: author_login
+        pattern: '^claude(\[bot\])?$'
+        confidence: high
+        notes: Commits made by the Claude GitHub Action app.
+
+  - id: github-copilot
+    name: GitHub Copilot coding agent
+    vendor: GitHub
+    homepage: https://github.com/features/copilot
+    status: verified
+    signals:
+      - id: copilot-swe-agent-login
+        type: author_login
+        pattern: '^copilot-swe-agent\[bot\]$'
+        confidence: high
+        evidence: Bot account used by the Copilot coding agent for its commits.
+      - id: copilot-coauthor-email
+        type: trailer_email
+        trailer_key: Co-Authored-By
+        pattern: 'Copilot@users\.noreply\.github\.com$'
+        confidence: high
+        notes: Co-author trailer on agent commits, e.g. "Copilot <175728472+Copilot@users.noreply.github.com>".
+      - id: copilot-author-login
+        type: author_login
+        pattern: '^Copilot$'
+        confidence: medium
+        notes: Pull requests opened by the coding agent show "Copilot" as author.
+
+  - id: cursor
+    name: Cursor
+    vendor: Anysphere
+    homepage: https://cursor.com
+    status: needs_verification
+    signals:
+      - id: cursor-coauthor-email
+        type: trailer_email
+        trailer_key: Co-Authored-By
+        pattern: '^cursoragent@cursor\.com$'
+        confidence: high
+        notes: Reported co-author trailer from Cursor agent commits. Confirm against public commits.
+      - id: cursor-coauthor-name
+        type: trailer_name
+        trailer_key: Co-Authored-By
+        pattern: '^Cursor(\s|$)'
+        confidence: medium
+      - id: cursor-bot-login
+        type: author_login
+        pattern: '^cursor(\[bot\])?$'
+        confidence: medium
+        notes: Background agent bot account. Confirm exact login.
+
+  - id: openai-codex
+    name: Codex
+    vendor: OpenAI
+    homepage: https://openai.com/codex
+    status: needs_verification
+    signals:
+      - id: codex-pr-body-task-link
+        type: pr_body
+        pattern: 'chatgpt\.com/codex/tasks/'
+        confidence: medium
+        notes: Codex cloud tasks append a task link to the pull request description.
+      - id: codex-connector-login
+        type: author_login
+        pattern: '^chatgpt-codex-connector\[bot\]$'
+        confidence: high
+        notes: Bot account that interacts with Codex-created pull requests.
+
+  - id: devin
+    name: Devin
+    vendor: Cognition
+    homepage: https://devin.ai
+    status: verified
+    signals:
+      - id: devin-integration-login
+        type: author_login
+        pattern: '^devin-ai-integration\[bot\]$'
+        confidence: high
+        evidence: Bot account Devin uses for commits and pull requests.
+
+  - id: google-jules
+    name: Jules
+    vendor: Google
+    homepage: https://jules.google
+    status: needs_verification
+    signals:
+      - id: jules-bot-login
+        type: author_login
+        pattern: '^google-labs-jules\[bot\]$'
+        confidence: high
+        notes: Bot account for Jules pull requests. Confirm exact login.
+
+  - id: gemini-code-assist
+    name: Gemini Code Assist
+    vendor: Google
+    homepage: https://codeassist.google
+    status: needs_verification
+    signals:
+      - id: gemini-code-assist-login
+        type: author_login
+        pattern: '^gemini-code-assist\[bot\]$'
+        confidence: high
+        notes: Primarily a review bot; commits authored by it are rare but exist.
+
+  - id: openhands
+    name: OpenHands
+    vendor: All Hands AI
+    homepage: https://all-hands.dev
+    status: needs_verification
+    signals:
+      - id: openhands-coauthor-email
+        type: trailer_email
+        trailer_key: Co-Authored-By
+        pattern: '^openhands@all-hands\.dev$'
+        confidence: high
+      - id: openhands-agent-login
+        type: author_login
+        pattern: '^openhands-agent$'
+        confidence: medium
+
+  - id: aider
+    name: Aider
+    vendor: Aider
+    homepage: https://aider.chat
+    status: needs_verification
+    signals:
+      - id: aider-coauthor-email
+        type: trailer_email
+        trailer_key: Co-Authored-By
+        pattern: '@aider\.chat$'
+        confidence: high
+        notes: Emitted when the user enables attribution via co-authored-by.
+      - id: aider-author-name-suffix
+        type: author_name
+        pattern: '\(aider\)$'
+        confidence: medium
+        notes: Aider's default attribution appends " (aider)" to the git author name.
+
+  - id: sweep
+    name: Sweep
+    vendor: Sweep AI
+    homepage: https://sweep.dev
+    status: needs_verification
+    signals:
+      - id: sweep-bot-login
+        type: author_login
+        pattern: '^sweep-ai\[bot\]$'
+        confidence: high

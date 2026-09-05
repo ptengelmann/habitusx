@@ -1,0 +1,188 @@
+{
+  "$defs": {
+    "Agent": {
+      "additionalProperties": false,
+      "description": "An AI coding agent and the signals that identify its work.",
+      "properties": {
+        "homepage": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Homepage"
+        },
+        "id": {
+          "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$",
+          "title": "Id",
+          "type": "string"
+        },
+        "name": {
+          "title": "Name",
+          "type": "string"
+        },
+        "signals": {
+          "items": {
+            "$ref": "#/$defs/Signal"
+          },
+          "minItems": 1,
+          "title": "Signals",
+          "type": "array"
+        },
+        "status": {
+          "$ref": "#/$defs/AgentStatus",
+          "default": "needs_verification"
+        },
+        "vendor": {
+          "title": "Vendor",
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "name",
+        "vendor",
+        "signals"
+      ],
+      "title": "Agent",
+      "type": "object"
+    },
+    "AgentStatus": {
+      "description": "Whether the community has confirmed an agent's signals against real commits.",
+      "enum": [
+        "verified",
+        "needs_verification",
+        "deprecated"
+      ],
+      "title": "AgentStatus",
+      "type": "string"
+    },
+    "Confidence": {
+      "description": "How strongly a signal implies the agent authored the change.",
+      "enum": [
+        "high",
+        "medium",
+        "low"
+      ],
+      "title": "Confidence",
+      "type": "string"
+    },
+    "Signal": {
+      "additionalProperties": false,
+      "description": "One detection rule.",
+      "properties": {
+        "case_sensitive": {
+          "default": false,
+          "title": "Case Sensitive",
+          "type": "boolean"
+        },
+        "confidence": {
+          "$ref": "#/$defs/Confidence"
+        },
+        "evidence": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "URL or note showing this marker in the wild.",
+          "title": "Evidence"
+        },
+        "id": {
+          "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$",
+          "title": "Id",
+          "type": "string"
+        },
+        "notes": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Notes"
+        },
+        "pattern": {
+          "description": "Python regular expression, searched (not anchored).",
+          "title": "Pattern",
+          "type": "string"
+        },
+        "trailer_key": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Required for trailer signal types, e.g. 'Co-Authored-By'.",
+          "title": "Trailer Key"
+        },
+        "type": {
+          "$ref": "#/$defs/SignalType"
+        }
+      },
+      "required": [
+        "id",
+        "type",
+        "pattern",
+        "confidence"
+      ],
+      "title": "Signal",
+      "type": "object"
+    },
+    "SignalType": {
+      "description": "Where in the input a signal looks.",
+      "enum": [
+        "trailer_name",
+        "trailer_email",
+        "trailer_present",
+        "author_login",
+        "author_email",
+        "author_name",
+        "message",
+        "pr_body"
+      ],
+      "title": "SignalType",
+      "type": "string"
+    }
+  },
+  "$id": "https://habitusx.dev/schemas/registry.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "description": "The full set of agents. This is the schema of ``registry/agents.yaml``.",
+  "properties": {
+    "agents": {
+      "items": {
+        "$ref": "#/$defs/Agent"
+      },
+      "minItems": 1,
+      "title": "Agents",
+      "type": "array"
+    },
+    "version": {
+      "minimum": 1,
+      "title": "Version",
+      "type": "integer"
+    }
+  },
+  "required": [
+    "version",
+    "agents"
+  ],
+  "title": "Registry",
+  "type": "object"
+}
