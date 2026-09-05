@@ -40,9 +40,14 @@ Try the engine on a message:
 
 ## Contributing
 
-Every change goes through a pull request with CI green. Commit messages follow
+See [CONTRIBUTING.md](CONTRIBUTING.md). Every change goes through a pull request with CI green. Commit messages follow
 Conventional Commits (`feat:`, `fix:`, `docs:`, ...). Architectural decisions get an ADR in
 `docs/adr/`. Registry contributions: `registry/README.md`.
+
+## License
+
+Code: [Business Source License 1.1](LICENSE), converting to Apache 2.0 on 2029-09-05. You may run it, modify it, and analyse your own repositories with it; you may not offer it as a competing hosted service before the change date.
+Registry data: [CC BY 4.0](registry/LICENSE).
 
 ## Principles
 

@@ -1,6 +1,6 @@
 # ADR 0005: Licensing
 
-Status: proposed, decision needed from the owner. Date: 2026-09-05.
+Status: accepted. Date: 2026-09-05.
 
 ## Context
 
@@ -26,4 +26,8 @@ outside contributions (PR 6).
 
 ## Decision
 
-Pending.
+- **Backend code:** Business Source License 1.1 (`/LICENSE`). Change Date 2029-09-05, Change License Apache 2.0. Additional Use Grant permits production use except offering the software as a hosted or embedded service that competes with the licensor's paid version; analysing your own repositories and contributing are explicitly allowed.
+- **Registry data:** CC BY 4.0 (`/registry/LICENSE`). Contributions are accepted under the same terms.
+- **Published aggregates:** CC BY 4.0, stated on the site when it launches.
+
+The Licensor is recorded as the GitHub account until a legal entity exists; update the parameter block in `/LICENSE` when it does.

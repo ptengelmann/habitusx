@@ -10,7 +10,7 @@ The order is chosen so that every stage produces something usable.
 | 3 | Postgres serving store and aggregates | SQLAlchemy models, Alembic migrations, nightly rollups by agent/language/week with within-repo baselines. Backfill of the last 90 days. |
 | 4 | Public API and badges | FastAPI read-only endpoints, per-repo and per-agent badge SVGs, OpenAPI spec, rate limiting. |
 | 5 | Frontend | Next.js index, per-agent pages, methodology page, badge embed snippets. Design reference supplied by the owner. |
-| 6 | Launch content | First monthly report, methodology published, registry open for contributions. |
+| 6 | Launch content | First monthly report, methodology published, registry open for contributions. Licensing decided (ADR 0005). |
 | 7 | GitHub App (private repos) | Installable app computing the same metrics for an organisation against the public baseline. First paid layer. |
 
 ## Non-goals for now
