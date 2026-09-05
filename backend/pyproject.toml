@@ -4,7 +4,7 @@ version = "0.1.0"
 description = "AI Code Outcomes Index: what happens to AI-written code after it lands."
 readme = "README.md"
 requires-python = ">=3.13"
-license = { text = "Proprietary" }
+license = "BUSL-1.1"
 authors = [{ name = "HabitusX" }]
 dependencies = [
   "pydantic>=2.11",

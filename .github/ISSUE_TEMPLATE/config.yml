@@ -1,0 +1,8 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Security vulnerability
+    url: https://github.com/ptengelmann/habitusx/security/advisories/new
+    about: Please report security issues privately, not as public issues.
+  - name: Methodology question
+    url: https://github.com/ptengelmann/habitusx/blob/main/docs/methodology.md
+    about: How the numbers are computed and what they cannot tell you.
