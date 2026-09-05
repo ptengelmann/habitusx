@@ -1,0 +1,147 @@
+[project]
+name = "habitusx"
+version = "0.1.0"
+description = "AI Code Outcomes Index: what happens to AI-written code after it lands."
+readme = "README.md"
+requires-python = ">=3.13"
+license = { text = "Proprietary" }
+authors = [{ name = "HabitusX" }]
+dependencies = [
+  "pydantic>=2.11",
+  "pydantic-settings>=2.9",
+  "pyyaml>=6.0",
+  "structlog>=25.1",
+  "typer>=0.15",
+]
+
+[project.optional-dependencies]
+bigquery = ["google-cloud-bigquery>=3.30"]
+
+[project.scripts]
+habitusx = "habitusx.cli:app"
+
+[dependency-groups]
+dev = [
+  "hypothesis>=6.130",
+  "mypy>=1.15",
+  "pytest>=8.3",
+  "pytest-cov>=6.1",
+  "ruff>=0.11",
+  "types-pyyaml>=6.0",
+]
+
+[build-system]
+requires = ["hatchling>=1.27"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/habitusx"]
+
+# --------------------------------------------------------------------------------------
+# Ruff: linting and formatting. One tool, one config, enforced in CI.
+# --------------------------------------------------------------------------------------
+[tool.ruff]
+target-version = "py313"
+line-length = 100
+src = ["src", "tests"]
+
+[tool.ruff.lint]
+select = [
+  "E", "W",    # pycodestyle
+  "F",         # pyflakes
+  "I",         # isort
+  "N",         # pep8-naming
+  "UP",        # pyupgrade
+  "B",         # bugbear
+  "A",         # shadowing builtins
+  "C4",        # comprehensions
+  "SIM",       # simplify
+  "RET",       # return statements
+  "RUF",       # ruff-specific
+  "S",         # bandit security
+  "T20",       # no stray print()
+  "PT",        # pytest style
+  "ANN",       # type annotations required
+  "TCH",       # type-checking imports
+  "ERA",       # no commented-out code
+  "PL",        # pylint subset
+  "PERF",      # performance
+  "D",         # docstrings
+]
+ignore = [
+  "D100", "D104",   # module/package docstrings: README and ADRs carry that weight
+  "D203", "D213",   # conflict with D211/D212 (google convention)
+  "PLR0913",        # too many arguments: pydantic models and typer commands legitimately have many
+  "PLR2004",        # magic values: handled case by case
+]
+
+[tool.ruff.lint.pydocstyle]
+convention = "google"
+
+[tool.ruff.lint.flake8-type-checking]
+# Pydantic reads annotations at runtime, so their imports must stay real imports.
+runtime-evaluated-base-classes = ["pydantic.BaseModel", "pydantic_settings.BaseSettings"]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/**" = [
+  "S101",     # asserts are the point of tests
+  "D",        # test names are the documentation
+  "ANN",      # fixtures and parametrize make full annotation noisy
+  "PLR",      # tests may be long and repetitive
+  "TC",       # type-checking-only imports add nothing in tests
+]
+"src/habitusx/cli.py" = ["T20"]   # the CLI prints; that is its job
+
+[tool.ruff.format]
+quote-style = "double"
+docstring-code-format = true
+
+# --------------------------------------------------------------------------------------
+# mypy: strict. If it type-checks, whole classes of bugs are gone before tests run.
+# --------------------------------------------------------------------------------------
+[tool.mypy]
+python_version = "3.13"
+strict = true
+warn_unreachable = true
+warn_return_any = true
+disallow_any_generics = true
+no_implicit_reexport = true
+show_error_codes = true
+pretty = true
+plugins = ["pydantic.mypy"]
+files = ["src", "tests"]
+
+[[tool.mypy.overrides]]
+module = ["google.cloud.*", "hypothesis.*"]
+ignore_missing_imports = true
+
+[tool.pydantic-mypy]
+init_forbid_extra = true
+init_typed = true
+warn_required_dynamic_aliases = true
+
+# --------------------------------------------------------------------------------------
+# pytest
+# --------------------------------------------------------------------------------------
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-ra --strict-markers --strict-config -p no:cacheprovider"
+xfail_strict = true
+filterwarnings = ["error"]
+markers = [
+  "integration: touches external systems; skipped unless HABITUSX_RUN_INTEGRATION=1",
+]
+
+[tool.coverage.run]
+source = ["habitusx"]
+branch = true
+
+[tool.coverage.report]
+show_missing = true
+skip_covered = true
+fail_under = 90
+exclude_also = [
+  "if TYPE_CHECKING:",
+  "raise NotImplementedError",
+  "@overload",
+]
