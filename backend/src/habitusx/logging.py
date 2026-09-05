@@ -41,6 +41,9 @@ def configure_logging(level: str = "INFO", log_format: LogFormat = "console") ->
         cache_logger_on_first_use=True,
     )
     logging.basicConfig(level=level, stream=sys.stderr, format="%(message)s")
+    # Vendor HTTP clients log every request at INFO; that is noise next to our own events.
+    for noisy in ("httpx", "httpcore", "google", "urllib3"):
+        logging.getLogger(noisy).setLevel(logging.WARNING)
 
 
 def get_logger(name: str) -> structlog.typing.FilteringBoundLogger:

@@ -1,0 +1,27 @@
+# history_page
+#
+# Follow-up page of default-branch history for one repository whose first page in
+# repo_activity had hasNextPage = true. Same node shape as repo_activity.
+
+query HistoryPage($since: GitTimestamp!, $after: String!) {
+  rateLimit { cost remaining resetAt }
+  repository(owner: "{{ owner }}", name: "{{ name }}") {
+    defaultBranchRef {
+      target {
+        ... on Commit {
+          history(first: {{ history_first }}, since: $since, after: $after) {
+            pageInfo { hasNextPage endCursor }
+            nodes {
+              oid
+              committedDate
+              messageHeadline
+              message
+              author { name email user { login __typename } }
+              associatedPullRequests(first: 1) { nodes { number } }
+            }
+          }
+        }
+      }
+    }
+  }
+}

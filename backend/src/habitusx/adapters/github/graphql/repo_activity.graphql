@@ -1,0 +1,59 @@
+# repo_activity
+#
+# One repository's activity since $since: default-branch commits (message, author, linked
+# PR) and the most recently updated pull requests. Rendered once per repository with a
+# distinct alias, then several fragments are concatenated into one request so a batch of
+# repositories costs one round trip. GitHub prices GraphQL by nodes requested; measured on
+# 2026-09-05 at ~0.5 points per repository with these page sizes.
+#
+# Placeholders {{ alias }}, {{ owner }}, {{ name }} are rendered by the adapter after the
+# repository name has passed RepoFullName validation. $since is a real GraphQL variable.
+
+{{ alias }}: repository(owner: "{{ owner }}", name: "{{ name }}") {
+  nameWithOwner
+  databaseId
+  isFork
+  stargazerCount
+  primaryLanguage { name }
+  defaultBranchRef {
+    name
+    target {
+      ... on Commit {
+        history(first: {{ history_first }}, since: $since) {
+          totalCount
+          pageInfo { hasNextPage endCursor }
+          nodes {
+            oid
+            committedDate
+            messageHeadline
+            message
+            author { name email user { login __typename } }
+            associatedPullRequests(first: 1) { nodes { number } }
+          }
+        }
+      }
+    }
+  }
+  pullRequests(first: {{ prs_first }}, orderBy: { field: UPDATED_AT, direction: DESC }) {
+    totalCount
+    nodes {
+      number
+      title
+      body
+      state
+      createdAt
+      closedAt
+      mergedAt
+      merged
+      updatedAt
+      author { login __typename }
+      additions
+      deletions
+      changedFiles
+      reviews { totalCount }
+      comments { totalCount }
+      reviewThreads { totalCount }
+      mergeCommit { oid }
+    }
+  }
+}

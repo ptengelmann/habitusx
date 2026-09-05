@@ -8,7 +8,12 @@ from habitusx.adapters.bigquery.gateway import (
     QueryStats,
     make_client,
 )
-from habitusx.adapters.bigquery.queries import RenderedQuery, commits_for_day, table_for_day
+from habitusx.adapters.bigquery.queries import (
+    RenderedQuery,
+    active_repos_for_day,
+    commits_for_day,
+    table_for_day,
+)
 
 __all__ = [
     "BigQueryClientLike",
@@ -17,6 +22,7 @@ __all__ = [
     "QueryResult",
     "QueryStats",
     "RenderedQuery",
+    "active_repos_for_day",
     "commits_for_day",
     "make_client",
     "table_for_day",

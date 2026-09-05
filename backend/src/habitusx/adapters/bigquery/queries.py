@@ -105,3 +105,11 @@ def commits_for_day(day: date, prefilter: Prefilter) -> RenderedQuery:
             "pusher_login_prefilter": prefilter.pusher_login,
         },
     )
+
+
+def active_repos_for_day(day: date) -> RenderedQuery:
+    """Distinct repositories pushed to on ``day``. Cheap; valid for any archive day."""
+    return RenderedQuery(
+        name="active_repos_for_day",
+        sql=_render(_load_sql("active_repos_for_day"), {"table": table_for_day(day)}),
+    )

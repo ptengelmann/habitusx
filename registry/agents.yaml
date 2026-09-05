@@ -40,6 +40,11 @@ agents:
         pattern: '^claude(\[bot\])?$'
         confidence: high
         notes: Commits made by the Claude GitHub Action app.
+      - id: claude-code-pr-footer
+        type: pr_body
+        pattern: 'Generated with \[Claude Code\]|claude\.ai/code/session_'
+        confidence: high
+        notes: Footer Claude Code appends to pull requests it opens on the user's behalf.
 
   - id: github-copilot
     name: GitHub Copilot coding agent

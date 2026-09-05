@@ -8,7 +8,7 @@ from __future__ import annotations
 
 import json
 import sys
-from datetime import date
+from datetime import UTC, date, datetime
 from pathlib import Path
 from typing import Annotated
 
@@ -16,6 +16,8 @@ import typer
 
 from habitusx import __version__
 from habitusx.adapters.bigquery import BigQueryGateway, make_client
+from habitusx.adapters.github import GitHubGraphQL, HttpxTransport
+from habitusx.adapters.github.client import TokenSource
 from habitusx.config import Settings, get_settings
 from habitusx.domain.attribution import AttributionInput
 from habitusx.domain.reverts import parse_revert
@@ -23,6 +25,14 @@ from habitusx.errors import ConfigurationError, HabitusXError
 from habitusx.logging import configure_logging
 from habitusx.registry import build_engine, load_registry, registry_json_schema
 from habitusx.services.ingest import estimate_day, ingest_day
+from habitusx.services.panel import (
+    assemble_panel,
+    control_candidates,
+    fetch_panel,
+    load_panel,
+    save_panel,
+    treated_candidates,
+)
 
 app = typer.Typer(
     name="habitusx",
@@ -34,6 +44,8 @@ registry_app = typer.Typer(help="Inspect and validate the attribution registry."
 app.add_typer(registry_app, name="registry")
 ingest_app = typer.Typer(help="Pull days of GitHub Archive into attributed observations.")
 app.add_typer(ingest_app, name="ingest")
+panel_app = typer.Typer(help="Build and fetch the repository panel (ongoing source, ADR 0006).")
+app.add_typer(panel_app, name="panel")
 
 RegistryOption = Annotated[
     Path | None,
@@ -195,6 +207,110 @@ def ingest_one_day(
         f"  billed {_human_bytes(summary.stats.billed_bytes)} in "
         f"{summary.stats.elapsed_seconds:.1f}s   manifest {summary.manifest_path.name}"
     )
+
+
+def _github_client(settings: Settings) -> GitHubGraphQL:
+    token = TokenSource(env_token=settings.github_token).resolve()
+    return GitHubGraphQL(HttpxTransport(token), reserve_points=settings.github_reserve_points)
+
+
+@panel_app.command("build")
+def panel_build(  # noqa: PLR0917 - typer options map one-to-one onto parameters
+    control_day: Annotated[
+        str, typer.Option("--control-day", help="Archive day to draw active repos from, YYYY-MM-DD")
+    ],
+    version: Annotated[int, typer.Option("--version", min=1)] = 1,
+    treated_rate: Annotated[float, typer.Option("--treated-rate", min=0.0, max=1.0)] = 0.25,
+    control_rate: Annotated[float, typer.Option("--control-rate", min=0.0, max=1.0)] = 0.01,
+    observations: Annotated[
+        Path | None,
+        typer.Option("--observations", help="Census output root. Defaults to data dir."),
+    ] = None,
+    out: Annotated[Path | None, typer.Option("--out", help="Panel JSON path.")] = None,
+) -> None:
+    """Build a panel: treated repos from the census on disk, control repos from the archive."""
+    day = _parse_day(control_day)
+    settings = get_settings()
+    obs_root = (observations or settings.data_dir) / "observations"
+    target = out or settings.data_dir / "panel" / f"panel_v{version}.json"
+    try:
+        gateway = _gateway(settings, None)
+        treated = treated_candidates(obs_root)
+        control = control_candidates(day, gateway=gateway)
+        panel = assemble_panel(
+            version=version,
+            created_on=datetime.now(UTC).date(),
+            treated=treated,
+            control=control,
+            treated_rate=treated_rate,
+            control_rate=control_rate,
+            control_source=f"archive_active:{day.isoformat()}",
+        )
+        save_panel(panel, target)
+    except HabitusXError as exc:
+        typer.echo(str(exc), err=True)
+        raise typer.Exit(code=1) from exc
+    n_treated = sum(1 for m in panel.members if m.cohort.value == "treated")
+    typer.echo(f"panel v{panel.version}: {len(panel.members):,} repos -> {target}")
+    typer.echo(f"  treated {n_treated:,} of {len(treated):,} candidates at rate {treated_rate}")
+    n_control = len(panel.members) - n_treated
+    typer.echo(
+        f"  control {n_control:,} of {len(control):,} active on {day} at rate {control_rate}"
+    )
+
+
+@panel_app.command("fetch")
+def panel_fetch(
+    since: Annotated[
+        str, typer.Option("--since", help="Fetch activity since this UTC day, YYYY-MM-DD")
+    ],
+    panel: Annotated[
+        Path | None, typer.Option("--panel", help="Panel JSON. Defaults to latest v1.")
+    ] = None,
+    limit: Annotated[
+        int | None, typer.Option("--limit", min=1, help="Only the first N members.")
+    ] = None,
+    out: Annotated[
+        Path | None, typer.Option("--out", help="Output root. Defaults to data dir.")
+    ] = None,
+    registry: RegistryOption = None,
+) -> None:
+    """Fetch every panel member's commits and pull requests since a date via the GitHub API."""
+    since_day = _parse_day(since)
+    settings = get_settings()
+    panel_path = panel or settings.data_dir / "panel" / "panel_v1.json"
+    try:
+        loaded_registry = load_registry(registry or settings.registry_path)
+        loaded_panel = load_panel(panel_path)
+        client = _github_client(settings)
+        summary = fetch_panel(
+            loaded_panel,
+            client=client,
+            registry=loaded_registry,
+            since=datetime(since_day.year, since_day.month, since_day.day, tzinfo=UTC),
+            fetched_on=datetime.now(UTC).date(),
+            out_dir=out or settings.data_dir,
+            limit=limit,
+            batch_size=settings.panel_batch_size,
+        )
+    except HabitusXError as exc:
+        typer.echo(str(exc), err=True)
+        raise typer.Exit(code=1) from exc
+
+    typer.echo(
+        f"{summary.fetched_on}: {summary.repos_requested:,} repos since {since} "
+        f"-> {summary.output_dir}"
+    )
+    statuses = ", ".join(f"{k} {v:,}" for k, v in summary.repos_by_status.items())
+    typer.echo(f"  repos: {statuses}")
+    typer.echo(
+        f"  commits {summary.commits:,} (attributed {summary.commits_attributed:,}, "
+        f"reverts {summary.reverts:,})   pulls {summary.pulls:,} "
+        f"(attributed {summary.pulls_attributed:,})"
+    )
+    for agent_id, count in sorted(summary.commits_by_agent.items(), key=lambda kv: -kv[1]):
+        typer.echo(f"  {agent_id:<20} {count:>8,} commits")
+    typer.echo(f"  github: {summary.points_spent:,} points in {summary.requests_made:,} requests")
 
 
 if __name__ == "__main__":  # pragma: no cover
