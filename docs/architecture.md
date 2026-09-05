@@ -64,7 +64,7 @@ ADRs in `docs/adr/`.
    within-repo rather than across the whole of GitHub.
 5. **Serve.** The API reads aggregates only. Badges are rendered from the same tables.
 
-## What exists now (PR 1)
+## What exists now (PR 1 and PR 2)
 
 - Domain: git trailer parser following `git interpret-trailers` semantics, commit model
   with validated SHA and repo name, revert/reapply parser, data-driven attribution engine
@@ -72,8 +72,15 @@ ADRs in `docs/adr/`.
 - Registry: ten agents with signals marked `verified` or `needs_verification`, schema
   generated from the models and checked in, loader with human-readable validation errors.
 - Tooling: uv, ruff, strict mypy, pytest with hypothesis, 90% coverage floor, CI.
+- Ingest (PR 2): registry-driven SQL prefilter, BigQuery gateway with dry-run budget guard,
+  one-day extraction to Parquet with a reproducibility manifest, CLI `ingest estimate|day`.
+  Historical only, to 2025-10-06; see ADR 0006 for why and what replaces it.
 
 ## Known limitations
+
+- **GitHub Archive carries no commit or PR content after 2025-10-06** and its
+  completeness is erratic in 2026. Ongoing data comes from a repository panel via the
+  GitHub API (ADR 0006).
 
 - Attribution only sees agents that leave markers. Users can disable markers. The index
   reports attribution coverage and compares within-repo to limit the bias.

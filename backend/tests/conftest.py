@@ -1,7 +1,8 @@
-"""Shared fixtures."""
+"""Shared fixtures and collection rules."""
 
 from __future__ import annotations
 
+import os
 from pathlib import Path
 
 import pytest
@@ -19,6 +20,18 @@ from habitusx.domain.attribution import (
 REPO_ROOT = Path(__file__).resolve().parents[2]
 REGISTRY_PATH = REPO_ROOT / "registry" / "agents.yaml"
 SCHEMA_PATH = REPO_ROOT / "registry" / "schema.json"
+
+RUN_INTEGRATION = os.environ.get("HABITUSX_RUN_INTEGRATION") == "1"
+
+
+def pytest_collection_modifyitems(config: pytest.Config, items: list[pytest.Item]) -> None:
+    """Skip live tests unless explicitly requested, so the default run needs no credentials."""
+    if RUN_INTEGRATION:
+        return
+    skip = pytest.mark.skip(reason="set HABITUSX_RUN_INTEGRATION=1 to run live tests")
+    for item in items:
+        if "integration" in item.keywords:
+            item.add_marker(skip)
 
 
 @pytest.fixture(scope="session")

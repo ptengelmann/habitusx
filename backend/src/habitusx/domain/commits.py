@@ -12,9 +12,10 @@ from habitusx.domain.trailers import normalise_message
 
 # Pattern is checked before to_lower runs, so it must accept either case.
 Sha = Annotated[str, StringConstraints(pattern=r"^[0-9a-fA-F]{40}$", to_lower=True)]
+# Owner may end in a hyphen: legacy accounts such as "ap--" exist in the archive.
 RepoFullName = Annotated[
     str,
-    StringConstraints(pattern=r"^[A-Za-z0-9](?:[A-Za-z0-9-]*[A-Za-z0-9])?/[A-Za-z0-9._-]+$"),
+    StringConstraints(pattern=r"^[A-Za-z0-9][A-Za-z0-9-]*/[A-Za-z0-9._-]+$"),
 ]
 
 _SUBJECT_SPLIT = re.compile(r"\n\s*\n|\n")

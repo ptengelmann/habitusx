@@ -40,7 +40,10 @@ class TestCommit:
         with pytest.raises(ValidationError):
             make(repo=repo)
 
-    @pytest.mark.parametrize("repo", ["octo/repo", "octo-org/my.repo_v2", "a/b", "O1/R-2"])
+    @pytest.mark.parametrize(
+        "repo",
+        ["octo/repo", "octo-org/my.repo_v2", "a/b", "O1/R-2", "ap--/universal_pathlib", "b-/x"],
+    )
     def test_valid_repo_names(self, repo: str) -> None:
         assert make(repo=repo).repo == repo
 

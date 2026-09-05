@@ -18,9 +18,12 @@ docs/        architecture, methodology, roadmap, ADRs
 
 ## Status
 
-PR 1 (foundation) delivers the deterministic core: git trailer parsing, revert detection,
-a data-driven attribution engine, a validated registry of ten agents, and the full quality
-gate in CI. Data ingestion from GitHub Archive is PR 2. See `docs/roadmap.md`.
+PR 1 delivered the deterministic core: trailer parsing, revert detection, a data-driven
+attribution engine, a validated registry of ten agents, the full quality gate in CI.
+PR 2 delivered historical ingest from GitHub Archive with a dry-run cost guard, and
+established that GitHub removed commit and PR content from public events on 7 October 2025
+(ADR 0006). Ongoing data will come from a repository panel via the GitHub API (PR 3).
+See `docs/roadmap.md`.
 
 ## Develop
 

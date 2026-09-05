@@ -8,18 +8,21 @@ from __future__ import annotations
 
 import json
 import sys
+from datetime import date
 from pathlib import Path
 from typing import Annotated
 
 import typer
 
 from habitusx import __version__
-from habitusx.config import get_settings
+from habitusx.adapters.bigquery import BigQueryGateway, make_client
+from habitusx.config import Settings, get_settings
 from habitusx.domain.attribution import AttributionInput
 from habitusx.domain.reverts import parse_revert
-from habitusx.errors import HabitusXError
+from habitusx.errors import ConfigurationError, HabitusXError
 from habitusx.logging import configure_logging
 from habitusx.registry import build_engine, load_registry, registry_json_schema
+from habitusx.services.ingest import estimate_day, ingest_day
 
 app = typer.Typer(
     name="habitusx",
@@ -29,6 +32,8 @@ app = typer.Typer(
 )
 registry_app = typer.Typer(help="Inspect and validate the attribution registry.")
 app.add_typer(registry_app, name="registry")
+ingest_app = typer.Typer(help="Pull days of GitHub Archive into attributed observations.")
+app.add_typer(ingest_app, name="ingest")
 
 RegistryOption = Annotated[
     Path | None,
@@ -103,6 +108,93 @@ def attribute(
         "revert": revert.model_dump(mode="json") if revert else None,
     }
     typer.echo(json.dumps(payload, indent=2))
+
+
+def _parse_day(value: str) -> date:
+    try:
+        return date.fromisoformat(value)
+    except ValueError as exc:
+        typer.echo(f"DAY must be YYYY-MM-DD, got {value!r}", err=True)
+        raise typer.Exit(code=2) from exc
+
+
+def _gateway(settings: Settings, max_bytes: int | None) -> BigQueryGateway:
+    """Build the real gateway, or fail with instructions if the project is not configured."""
+    if not settings.gcp_project:
+        raise ConfigurationError(
+            "HABITUSX_GCP_PROJECT is not set. Put it in backend/.env, e.g. "
+            "HABITUSX_GCP_PROJECT=habitusx-507702, and make sure you have run "
+            "'gcloud auth application-default login'."
+        )
+    return BigQueryGateway(
+        make_client(settings.gcp_project, settings.bq_location),
+        max_bytes_billed=max_bytes or settings.bq_max_bytes_billed,
+        location=settings.bq_location,
+    )
+
+
+def _human_bytes(n: int) -> str:
+    return f"{n / 1024**3:,.2f} GiB"
+
+
+@ingest_app.command("estimate")
+def ingest_estimate(
+    day: Annotated[str, typer.Argument(help="UTC day, YYYY-MM-DD")],
+    registry: RegistryOption = None,
+) -> None:
+    """Dry-run the extraction for DAY and print the bytes it would scan. Spends nothing."""
+    parsed = _parse_day(day)
+    settings = get_settings()
+    try:
+        loaded = load_registry(registry or settings.registry_path)
+        gateway = _gateway(settings, None)
+        estimated = estimate_day(parsed, registry=loaded, gateway=gateway)
+    except HabitusXError as exc:
+        typer.echo(str(exc), err=True)
+        raise typer.Exit(code=1) from exc
+    verdict = "within" if estimated <= gateway.max_bytes_billed else "OVER"
+    typer.echo(
+        f"{day}: {_human_bytes(estimated)} estimated, {verdict} the "
+        f"{_human_bytes(gateway.max_bytes_billed)} ceiling"
+    )
+
+
+@ingest_app.command("day")
+def ingest_one_day(
+    day: Annotated[str, typer.Argument(help="UTC day, YYYY-MM-DD")],
+    out: Annotated[
+        Path | None, typer.Option("--out", help="Output root. Defaults to HABITUSX_DATA_DIR.")
+    ] = None,
+    max_bytes: Annotated[
+        int | None,
+        typer.Option("--max-bytes", help="Override the per-query byte ceiling for this run."),
+    ] = None,
+    registry: RegistryOption = None,
+) -> None:
+    """Extract DAY from GitHub Archive, attribute it, and write Parquet plus a manifest."""
+    parsed = _parse_day(day)
+    settings = get_settings()
+    try:
+        loaded = load_registry(registry or settings.registry_path)
+        gateway = _gateway(settings, max_bytes)
+        summary = ingest_day(
+            parsed, registry=loaded, gateway=gateway, out_dir=out or settings.data_dir
+        )
+    except HabitusXError as exc:
+        typer.echo(str(exc), err=True)
+        raise typer.Exit(code=1) from exc
+
+    typer.echo(f"{summary.day}: {summary.rows_total:,} rows -> {summary.output_path}")
+    typer.echo(
+        f"  attributed {summary.rows_attributed:,}   reverts {summary.rows_reverts:,}   "
+        f"baseline {summary.rows_baseline:,}   skipped {summary.rows_skipped_invalid:,}"
+    )
+    for agent_id, count in sorted(summary.by_agent.items(), key=lambda kv: -kv[1]):
+        typer.echo(f"  {agent_id:<20} {count:>8,}")
+    typer.echo(
+        f"  billed {_human_bytes(summary.stats.billed_bytes)} in "
+        f"{summary.stats.elapsed_seconds:.1f}s   manifest {summary.manifest_path.name}"
+    )
 
 
 if __name__ == "__main__":  # pragma: no cover
